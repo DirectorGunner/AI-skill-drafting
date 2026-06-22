@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "topics": [
+    {
+      "topic": "Skill Package Anatomy",
+      "file": "references/skill-package-anatomy.md",
+      "summary": "Required and optional pieces of a skill package, with rules for trigger frontmatter, progressive disclosure, references, scripts, and assets.",
+      "keywords": ["skill", "SKILL.md", "frontmatter", "description", "references", "scripts", "assets", "progressive disclosure"]
+    },
+    {
+      "topic": "Interview And Spec Gates",
+      "file": "references/interview-spec-gates.md",
+      "summary": "A staged interview workflow for extracting goal, consumers, scope, triggers, architecture, verification, and implementation decisions before writes.",
+      "keywords": ["interview", "spec", "gate", "checkpoint", "decisions", "assumptions", "acceptance criteria"]
+    },
+    {
+      "topic": "Source Digestion And Fidelity",
+      "file": "references/source-digestion-and-fidelity.md",
+      "summary": "Source-backed drafting rules that preserve names, commands, paths, and numbers while transforming prose into original task-organized guidance.",
+      "keywords": ["source", "digest", "fidelity", "attribution", "glossary", "references", "license"]
+    },
+    {
+      "topic": "Quality Harnesses",
+      "file": "references/quality-harnesses.md",
+      "summary": "How to define good-vs-bad skill quality, create observation artifacts, and build task-specific verification before implementation.",
+      "keywords": ["quality", "rubric", "tests", "verifier", "observation", "good output", "bad output"]
+    },
+    {
+      "topic": "Subagents And Forward Testing",
+      "file": "references/subagents-and-forward-testing.md",
+      "summary": "Guidance for independent subagent critique, source digestion, architecture review, and realistic forward-tests without leaking expected answers.",
+      "keywords": ["subagent", "forward-test", "critique", "independent review", "validation", "orchestrator"]
+    },
+    {
+      "topic": "Memory Hooks And Environment",
+      "file": "references/memory-hooks-and-environment.md",
+      "summary": "Rules for assessing AGENTS.md, CLAUDE.md, hooks, guardrails, setup, durable memory, and tool enablement without unauthorized edits.",
+      "keywords": ["AGENTS.md", "CLAUDE.md", "hooks", "guardrails", "setup", "environment", "permissions", "memory"]
+    },
+    {
+      "topic": "Category Patterns",
+      "file": "references/category-patterns.md",
+      "summary": "The 9 skill categories, their expected outputs, typical resources, observation methods, and validation patterns.",
+      "keywords": ["category", "taxonomy", "library", "verification", "runbook", "operations", "scaffolding", "review"]
+    },
+    {
+      "topic": "Gotchas And Measurement",
+      "file": "references/gotchas-and-measurement.md",
+      "summary": "Recurring failure modes, gotcha capture, trigger tuning, usage measurement, and iteration practices for skills after first release.",
+      "keywords": ["gotchas", "measurement", "iteration", "under-triggering", "over-triggering", "usage", "failures"]
+    }
+  ]
+}
