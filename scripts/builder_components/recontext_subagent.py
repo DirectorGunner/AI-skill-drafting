@@ -35,8 +35,7 @@ from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import recontext_core as core
+from . import recontext_core as core
 
 try:  # stdin must accept any source glyph regardless of console code page (core does stdout/stderr)
     sys.stdin.reconfigure(encoding="utf-8")
@@ -75,6 +74,7 @@ class ValidationFailure(Exception):
 
 
 def _print(message: str = "") -> None:
+    """Print message to stdout and flush immediately."""
     print(message, flush=True)
 
 
@@ -82,10 +82,12 @@ def _print(message: str = "") -> None:
 # Path safety — every writable path is derived internally and confined to --work-root.
 # --------------------------------------------------------------------------- #
 def _resolve(path_text, *, strict: bool = False) -> Path:
+    """Return path_text resolved to an absolute Path; strict=True requires it to exist."""
     return Path(path_text).resolve(strict=strict)
 
 
 def _is_under(child: Path, parent: Path) -> bool:
+    """True if child is contained within parent."""
     try:
         child.relative_to(parent)
         return True
@@ -94,6 +96,7 @@ def _is_under(child: Path, parent: Path) -> bool:
 
 
 def _require_under(child: Path, parent: Path, label: str) -> Path:
+    """Return child resolved, raising ValidationFailure (named by label) if it escapes parent."""
     child_resolved = _resolve(child)
     parent_resolved = _resolve(parent)
     if child_resolved != parent_resolved and not _is_under(child_resolved, parent_resolved):
@@ -114,6 +117,7 @@ def _validate_work_root(value) -> Path:
 
 
 def _validate_source_root(value) -> Path:
+    """Resolve value as the read-only source root, requiring it to exist."""
     root = _resolve(value)
     if not root.exists():
         raise ValidationFailure(f"--source-root does not exist: {root}")
@@ -121,30 +125,35 @@ def _validate_source_root(value) -> Path:
 
 
 def _validate_skill(value: str) -> str:
+    """Return value if it is a valid skill slug, else raise ValidationFailure."""
     if not SKILL_RE.fullmatch(value):
         raise ValidationFailure(f"invalid --skill: {value!r}")
     return value
 
 
 def _validate_worker(value: str) -> str:
+    """Return value if it is a valid worker id with no path traversal, else raise ValidationFailure."""
     if not WORKER_RE.fullmatch(value) or ".." in value or "/" in value or "\\" in value:
         raise ValidationFailure(f"invalid --worker: {value!r}")
     return value
 
 
 def _validate_mode(value: str) -> str:
+    """Return value if it is a recognized mode (extract/full), else raise ValidationFailure."""
     if value not in MODE_CHOICES:
         raise ValidationFailure(f"invalid --mode: {value!r}")
     return value
 
 
 def _validate_tier(value: str) -> str:
+    """Return value if it is a non-empty tier free of path/control characters, else raise."""
     if not value or any(ch in value for ch in "\\/\0\r\n"):
         raise ValidationFailure(f"invalid --tier: {value!r}")
     return value
 
 
 def _validate_rel(value: str, skill: str) -> str:
+    """Return a normalized POSIX rel path that is relative, traversal-free, and begins with skill/."""
     normalized = value.replace("\\", "/")
     rel = PurePosixPath(normalized)
     if rel.is_absolute():
@@ -157,15 +166,18 @@ def _validate_rel(value: str, skill: str) -> str:
 
 
 def _rel_to_path(root: Path, rel: str) -> Path:
+    """Join a POSIX rel path onto root, segment by segment."""
     return root.joinpath(*PurePosixPath(rel).parts)
 
 
 def _assignment_dir(work_root: Path, skill: str, worker: str) -> Path:
+    """Return the per-worker assignment directory under work_root, confined to work_root."""
     target = work_root / ASSIGNMENT_SUBDIR / skill / worker
     return _require_under(target, work_root, "assignment directory")
 
 
 def _assignment_paths(adir: Path) -> dict:
+    """Return the canonical artifact paths (assignment/packet/rewrite/work/result) within adir."""
     return {
         "assignment": adir / "assignment.json",
         "packet": adir / "packet.json",
@@ -176,6 +188,7 @@ def _assignment_paths(adir: Path) -> dict:
 
 
 def _safe_mkdir(path: Path, work_root: Path) -> None:
+    """Create path (and parents), asserting before and after that it stays under work_root."""
     _require_under(path, work_root, "directory")
     path.mkdir(parents=True, exist_ok=True)
     real = _resolve(path, strict=True)
@@ -213,17 +226,20 @@ def _atomic_write_bytes(output: Path, data: bytes, work_root: Path) -> None:
 
 
 def _atomic_write_json(output: Path, payload: Any, work_root: Path) -> None:
+    """Serialize payload to sorted, indented JSON and atomically write it under work_root."""
     text = json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
     _atomic_write_bytes(output, text.encode("utf-8"), work_root)
 
 
 def _atomic_write_text(output: Path, text: str, work_root: Path) -> None:
+    """Atomically write text (ensuring a trailing newline) as UTF-8 under work_root."""
     if not text.endswith("\n"):
         text += "\n"
     _atomic_write_bytes(output, text.encode("utf-8"), work_root)
 
 
 def _reject_duplicate_pairs(pairs):
+    """object_pairs_hook that builds a dict but raises ValidationFailure on any duplicate key."""
     out = {}
     for key, value in pairs:
         if key in out:
@@ -233,6 +249,7 @@ def _reject_duplicate_pairs(pairs):
 
 
 def _load_json_file(path: Path, label: str):
+    """Load JSON from path (rejecting duplicate keys), raising ValidationFailure named by label."""
     try:
         with path.open("r", encoding="utf-8") as handle:
             return json.load(handle, object_pairs_hook=_reject_duplicate_pairs)
@@ -246,6 +263,8 @@ def _load_json_file(path: Path, label: str):
 # Packet / rewrite validation (extract mode).
 # --------------------------------------------------------------------------- #
 def _normalize_packet_items(packet: Any) -> list:
+    """Validate and normalize a packet's items into a list of {i, cell, text}, rejecting
+    malformed types and duplicate (i, cell) keys."""
     if not isinstance(packet, dict) or not isinstance(packet.get("items"), list):
         raise ValidationFailure("packet is missing an items list")
     items, seen = [], set()
@@ -268,6 +287,7 @@ def _normalize_packet_items(packet: Any) -> list:
 
 
 def _check_banned(text: str, where: str) -> None:
+    """Raise ValidationFailure (naming where) if text contains any banned filler phrase."""
     lowered = text.lower()
     for phrase in STYLE_BANNED_PHRASES:
         if phrase.lower() in lowered:
@@ -323,6 +343,8 @@ _ASSIGNMENT_KEYS = {
 
 
 def _load_assignment(work_root: Path, skill: str, worker: str):
+    """Load and fully validate the worker's assignment.json, verifying schema, identity, derived
+    paths, and that source matches source_root+rel. Returns (assignment, paths, source, mode)."""
     skill = _validate_skill(skill)
     worker = _validate_worker(worker)
     adir = _assignment_dir(work_root, skill, worker)
@@ -359,6 +381,7 @@ def _load_assignment(work_root: Path, skill: str, worker: str):
 # Commands.
 # --------------------------------------------------------------------------- #
 def cmd_prepare(args: argparse.Namespace) -> int:
+    """Build the assignment (and, in extract mode, the prose packet) for a worker under work_root."""
     work_root = _validate_work_root(args.work_root)
     source_root = _validate_source_root(args.source_root)
     skill = _validate_skill(args.skill)
@@ -413,6 +436,7 @@ def cmd_prepare(args: argparse.Namespace) -> int:
 
 
 def _contract_lines(mode: str) -> list:
+    """Return the rewrite-contract bullet lines shown to the subagent for the given mode."""
     common = [
         "- Submit ONLY through `recontext_subagent submit` (stdin); never write artifacts yourself.",
         "- Preserve EXACTLY: identifiers, API/class/method names, namespaced tokens (Foo::Bar),"
@@ -436,6 +460,7 @@ def _contract_lines(mode: str) -> list:
 
 
 def cmd_show(args: argparse.Namespace) -> int:
+    """Print the assignment, rewrite contract, and the work to rewrite (packet or whole source)."""
     work_root = _validate_work_root(args.work_root)
     assignment, paths, source, mode = _load_assignment(work_root, args.skill, args.worker)
     _print("PASS show")
@@ -455,6 +480,7 @@ def cmd_show(args: argparse.Namespace) -> int:
 
 
 def _verdict_fields(verdict: dict) -> dict:
+    """Flatten a gate verdict into the per-file result fields (status + gate_a/b/c summary)."""
     gb = verdict["gate_b"]
     return {
         "status": "up-to-standard",
@@ -466,6 +492,7 @@ def _verdict_fields(verdict: dict) -> dict:
 
 
 def _gate_or_fail(source_text: str, work_text: str) -> dict:
+    """Run gates A/B/C and return the verdict, raising ValidationFailure with reasons on any failure."""
     verdict = core.run_gates(source_text, work_text, faction=FACTION, min_run=MIN_RUN)
     if not verdict["passed"]:
         reasons = []
@@ -482,6 +509,7 @@ def _gate_or_fail(source_text: str, work_text: str) -> dict:
 
 
 def cmd_submit(args: argparse.Namespace) -> int:
+    """Read the rewrite from stdin, splice/clean it, gate it (A/B/C), and write artifacts only on PASS."""
     work_root = _validate_work_root(args.work_root)
     assignment, paths, source, mode = _load_assignment(work_root, args.skill, args.worker)
     source_text = core.read(source)
@@ -581,14 +609,16 @@ def cmd_audit(args: argparse.Namespace) -> int:
 # CLI.
 # --------------------------------------------------------------------------- #
 def build_parser() -> argparse.ArgumentParser:
+    """Build the argparse parser for the prepare/show/submit/audit subcommands."""
     parser = argparse.ArgumentParser(
-        prog=TOOL_NAME,
+        prog="skill_builder.py recontext-subagent",
         description="Locked, gated, portable artifact writer for recontextualization subagents.",
     )
     parser.add_argument("--version", action="version", version=f"{TOOL_NAME} {TOOL_VERSION}")
     sub = parser.add_subparsers(dest="command", required=True)
 
     def add_common(sp):
+        """Add the shared --work-root/--skill/--worker arguments to a subparser."""
         sp.add_argument("--work-root", required=True,
                         help="the single writable sandbox (must already exist); all writes are confined here")
         sp.add_argument("--skill", required=True)
@@ -620,7 +650,15 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(argv=None) -> int:
+def cmd_recontext_subagent(argv=None) -> int:
+    """Run the locked, gated artifact writer: the `recontext-subagent` subcommand of `skill_builder.py`.
+
+    Parses the subagent argument vector (`prepare`/`show`/`submit`/`audit` from `build_parser`) and
+    dispatches to the bound handler. Catches the writer's own failure types so a subagent never sees a
+    raw traceback it might try to "fix" by hand: returns 2 on usage error, 1 on a validation/gate
+    failure (or any unexpected exception), 0 on success. Reads ``sys.argv[1:]`` when ``argv`` is None
+    (argparse default).
+    """
     parser = build_parser()
     try:
         args = parser.parse_args(argv)
@@ -637,6 +675,11 @@ def main(argv=None) -> int:
     except Exception as exc:  # never surface a raw traceback that a subagent might "fix" by hand
         _print(f"FAIL {args.command}: unexpected {type(exc).__name__}: {exc}")
         return 1
+
+
+def main(argv=None) -> int:
+    """Standalone entry for `python -m builder_components.recontext_subagent`; delegates to the cmd."""
+    return cmd_recontext_subagent(argv)
 
 
 if __name__ == "__main__":

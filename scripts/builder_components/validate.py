@@ -2,9 +2,9 @@
 """Validate a Codex/Claude skill package using lightweight stdlib checks.
 
 Usage:
-  python validate_skill_package.py <skill_dir>
+  python skill_builder.py validate <skill_dir>
       Validate a single (leaf) skill directory.
-  python validate_skill_package.py --package <router_dir>
+  python skill_builder.py validate --package <router_dir>
       Validate a router skill plus every product subskill beneath it, and
       check routing integrity, in one run. A router does not need its own
       references/ corpus; each immediate subdirectory that contains a
@@ -18,9 +18,10 @@ import re
 import sys
 from pathlib import Path
 
+from .util.frontmatter import parse_frontmatter
+
 
 NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
-FRONTMATTER_RE = re.compile(r"\A---\r?\n(?P<body>.*?)\r?\n---\r?\n", re.DOTALL)
 # Only flag genuine authoring placeholders. Documentation legitimately contains
 # angle brackets (HTML/XML samples, code placeholders like <YOUR_CLIENT_ID>), so a
 # generic <...> rule produces false positives on real reference content.
@@ -28,34 +29,20 @@ PLACEHOLDER_RE = re.compile(r"\b(?:TODO|TBD)\b")
 
 
 def read_text(path: Path) -> str:
+    """Read and return the file at `path` as UTF-8 text."""
     return path.read_text(encoding="utf-8")
 
 
-def parse_frontmatter(text: str) -> dict[str, str]:
-    match = FRONTMATTER_RE.match(text)
-    if not match:
-        return {}
-    values: dict[str, str] = {}
-    current_key: str | None = None
-    for raw_line in match.group("body").splitlines():
-        if not raw_line.strip():
-            continue
-        if raw_line.startswith((" ", "\t")) and current_key:
-            values[current_key] = values[current_key] + " " + raw_line.strip().strip("'\"")
-            continue
-        if ":" not in raw_line:
-            continue
-        key, value = raw_line.split(":", 1)
-        current_key = key.strip()
-        values[current_key] = value.strip().strip("'\"")
-    return values
-
-
 def fail(errors: list[str], message: str) -> None:
+    """Append a validation failure `message` to the `errors` accumulator."""
     errors.append(message)
 
 
 def validate_frontmatter(skill_dir: Path, errors: list[str]) -> str:
+    """Validate SKILL.md frontmatter, required sections, and gotchas; return its raw text.
+
+    Appends any problems to `errors`. Returns "" when SKILL.md is missing.
+    """
     skill_md = skill_dir / "SKILL.md"
     if not skill_md.is_file():
         fail(errors, "SKILL.md is missing")
@@ -93,6 +80,10 @@ def validate_frontmatter(skill_dir: Path, errors: list[str]) -> str:
 
 
 def validate_references(skill_dir: Path, errors: list[str]) -> None:
+    """Validate the references/ corpus: INDEX.md, topics.json schema, and each topic file.
+
+    Appends any problems to `errors`.
+    """
     references_dir = skill_dir / "references"
     index_path = references_dir / "INDEX.md"
     topics_path = references_dir / "topics.json"
@@ -144,6 +135,10 @@ def validate_references(skill_dir: Path, errors: list[str]) -> None:
 
 
 def check_placeholder_text(rel: str, text: str, errors: list[str]) -> None:
+    """Flag authoring placeholders (TODO/TBD) in `text`, skipping code fences and inline code.
+
+    `rel` is the file label used in failure messages; problems are appended to `errors`.
+    """
     in_fence = False
     for line_number, line in enumerate(text.splitlines(), start=1):
         stripped = line.lstrip()
@@ -159,6 +154,7 @@ def check_placeholder_text(rel: str, text: str, errors: list[str]) -> None:
 
 
 def validate_placeholders(skill_dir: Path, errors: list[str]) -> None:
+    """Run placeholder checks over the authored surface (SKILL.md and references metadata)."""
     # Placeholder/TODO checks target the AUTHORED surface (SKILL.md and the
     # references index/metadata). Ingested reference content legitimately contains
     # words like "TBD"/"TODO" (e.g. version tables, source headings), so it is exempt.
@@ -169,6 +165,7 @@ def validate_placeholders(skill_dir: Path, errors: list[str]) -> None:
 
 
 def validate_leaf(skill_dir: Path) -> list[str]:
+    """Validate a single leaf skill directory and return the list of error messages (empty = pass)."""
     errors: list[str] = []
     if not skill_dir.exists():
         return [f"skill directory does not exist: {skill_dir}"]
@@ -181,6 +178,7 @@ def validate_leaf(skill_dir: Path) -> list[str]:
 
 
 def discover_subskills(router_dir: Path) -> list[Path]:
+    """Return the sorted immediate subdirectories of `router_dir` that contain a SKILL.md."""
     return sorted(
         d for d in router_dir.iterdir()
         if d.is_dir() and (d / "SKILL.md").is_file()
@@ -214,11 +212,13 @@ def validate_router(router_dir: Path) -> tuple[list[str], list[Path]]:
 
 
 def validate(skill_dir: Path) -> list[str]:
+    """Validate a single leaf skill (backward-compatible alias for validate_leaf)."""
     # Backward-compatible single-leaf entry point.
     return validate_leaf(skill_dir)
 
 
 def _report(label: str, target: Path, errors: list[str]) -> bool:
+    """Print a PASS/FAIL line (with any errors) for `target` and return True when there are no errors."""
     if errors:
         print(f"FAIL{label}: {target}")
         for error in errors:
@@ -228,7 +228,19 @@ def _report(label: str, target: Path, errors: list[str]) -> bool:
     return True
 
 
-def main(argv: list[str] | None = None) -> int:
+def cmd_validate(argv: list[str] | None = None) -> int:
+    """Validate one skill (leaf) or a whole router package, and report PASS/FAIL.
+
+    This is the `validate` subcommand of `skill_builder.py` (and the `-m builder_components.validate`
+    entry point). Argument forms (parsed positionally, no argparse, to keep the contract minimal):
+
+    - ``<skill_directory>`` — validate a single leaf skill; exit 0 on PASS, 1 on any error.
+    - ``--package <router_directory>`` — validate a router plus every product subskill beneath it and
+      check routing integrity; exit 0 only if the router and all subskills pass.
+
+    Returns the process exit code (0 ok, 1 validation failure, 2 usage error). Reads ``sys.argv[1:]``
+    when ``argv`` is None.
+    """
     args = sys.argv[1:] if argv is None else argv
     if len(args) == 2 and args[0] == "--package":
         router_dir = Path(args[1]).resolve()
@@ -239,12 +251,17 @@ def main(argv: list[str] | None = None) -> int:
         print(f"PACKAGE {'PASS' if ok else 'FAIL'}: {router_dir} ({len(subskills)} subskills)")
         return 0 if ok else 1
     if len(args) != 1:
-        print("Usage: python validate_skill_package.py [--package] <skill_directory>", file=sys.stderr)
+        print("Usage: python skill_builder.py validate [--package] <skill_directory>", file=sys.stderr)
         return 2
     skill_dir = Path(args[0]).resolve()
     errors = validate(skill_dir)
     _report("", skill_dir, errors)
     return 1 if errors else 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Standalone entry point for `python -m builder_components.validate`; delegates to cmd_validate."""
+    return cmd_validate(argv)
 
 
 if __name__ == "__main__":

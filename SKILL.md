@@ -65,7 +65,7 @@ When the skill is a large body of ingested documentation (many source chunks rat
 1. **Ingest** live docs into a corpus JSONL with `scripts/skill_builder.py ingest <format>` (a shared HTML->Markdown converter backs the HTML formats): `ingest mdbook` (an mdBook `print.html`), `ingest html` (crawled HTML pages / a docs bundle), `ingest rustdoc` (generator-rendered API pages; content selector, dropped section ids, and stripped label are options with rustdoc defaults), `ingest pdf` (born-digital PDF via `pdftotext` + `qpdf`). Each record is `{chunk_id, title, source_url, text, tags[, subskill, section]}`.
 2. **Build** with `scripts/skill_builder.py build`: it packs chunks into right-sized per-subject reference files at natural source boundaries and writes `references/INDEX.md` + `references/topics.json` + a starter `SKILL.md` — flat, or a router of sub-skills. Default mode resolves source links/images and normalizes formatting; the **`--verbatim`** preset turns that off for faithful reproduction of already-clean docs. Pass `--verify` to audit coverage, link/image residue, and file sizes.
 3. **Finalize** with `scripts/skill_builder.py finalize --skill <dir> --meta <meta.json>` to write the gold `SKILL.md` sections + sibling `GOTCHA.md` (routers: every sub-skill).
-4. **Validate** with `scripts/validate_skill_package.py` (`--package` for routers).
+4. **Validate** with `scripts/skill_builder.py validate` (`--package` for routers).
 
 See [`better-skill-framework.md`](../../../better-skill-framework.md) for the full pipeline and the gold package spec.
 
@@ -77,10 +77,10 @@ When a skill already has good prose but a few `references/*.md` files are too bi
 
 When a skill's `references/*.md` were ingested **verbatim** from upstream docs, reword them into
 **original prose** (identifiers/code/links/numbers/tables preserved exactly) before publishing — the
-licensing gate. The engine is `scripts/recontext_core.py`; drive it with `scripts/skill_builder.py recontext`:
+licensing gate. The engine is `scripts/builder_components/recontext_core.py`; drive it with `scripts/skill_builder.py recontext`:
 primitives `clean | extract | splice | gate | triage`, and the lifecycle `scan -> batch -> drain ->
 integrate -> finish -> reconcile -> promote` (roots/owner from a `--config` JSON or CLI flags; nothing
-hardcoded). Rewriting subagents must go through the **locked, gated writer** `scripts/recontext_subagent.py`
+hardcoded). Rewriting subagents must go through the **locked, gated writer** `scripts/skill_builder.py recontext-subagent`
 (`prepare`/`show`/`submit`): it derives all paths internally, confines writes to one `--work-root`, and
 runs Gate A (identifiers), Gate B (~13-word residue), and Gate C (cruft) before writing — so a `PASS`
 is verified. `recontext drain` generates a Workflow that drives this writer (replacing freehand
@@ -104,7 +104,7 @@ Recurring failure modes and what to do instead live in the sibling [GOTCHA.md](G
 For this skill package, run the validator against the package you are editing:
 
 ```powershell
-python "$env:DEVROOT\SKILLS\skills\skill-drafting\scripts\validate_skill_package.py" "$env:DEVROOT\SKILLS\skills\skill-drafting"
+python "$env:DEVROOT\SKILLS\skills\skill-drafting\scripts\skill_builder.py" validate "$env:DEVROOT\SKILLS\skills\skill-drafting"
 ```
 
 For long or batched skill builds, check usage after each batch. For Claude, use `scripts/claude_usage_check.py` to print utilization only. For Codex, use `scripts/codex_usage_check.py` in read-only mode. By default the Codex agent sandbox blocks direct egress to the ChatGPT usage endpoint, so an in-sandbox agent cannot read Codex usage on its own; the user must run the host-side bridge: ask them to launch the visible `scripts/codex_usage_bridge.cmd` (or `scripts/codex_usage_check.py --run-bridge --login-if-needed`), which does the auth preflight by default. Use `--login` only when the user explicitly asks to authenticate. Normal checker runs auto-detect `AI/work/codex-usage-bridge.json` or can query `--app-server-url ws://127.0.0.1:17342` explicitly. Repo-local Codex mode creates or repairs `AI/work/.gitignore` before writing local Codex state. If credentials are absent or unavailable, both scripts exit cleanly without leaking token data.

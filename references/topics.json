@@ -130,6 +130,21 @@
         "usage",
         "failures"
       ]
+    },
+    {
+      "topic": "Skill README Standard",
+      "file": "references/readme-standard.md",
+      "summary": "The single-sourced standard and template for a skill's public README.md: managed boilerplate regions (Agent Kaizen intro, %DEVROOT% Use-it instructions, idle-context policy, License) located by markdown heading (no markers in shippable files) versus authored prose, and the skill_builder.py readme scaffold/apply workflow that propagates a standard change across every skill README.",
+      "keywords": [
+        "readme",
+        "standard",
+        "template",
+        "scaffold",
+        "managed regions",
+        "markers",
+        "boilerplate",
+        "DEVROOT"
+      ]
     }
   ]
 }

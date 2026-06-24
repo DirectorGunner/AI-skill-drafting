@@ -90,6 +90,7 @@ def code_blocks(text: str):
 # Word / n-gram originality (locked 13-word gate).
 # --------------------------------------------------------------------------- #
 def words(t: str):
+    """Return the lowercased word tokens of t."""
     return re.findall(r"\w+", t.lower())
 
 
@@ -154,6 +155,7 @@ MARKER_RE = re.compile(
 
 
 def marker_line(skill_title: str) -> str:
+    """Return the normalized marker blockquote line for the given skill title."""
     return f"> {skill_title} reference. Original prose; identifiers preserved verbatim."
 
 
@@ -440,6 +442,7 @@ def gate_b(source_text: str, working_text: str, min_run: int = 13):
 # Gate C: residual cruft.
 # --------------------------------------------------------------------------- #
 def gate_c(working_text: str):
+    """PASS when the working text carries no residual scrape cruft. Returns (passed, detail)."""
     hits = chrome_hits(working_text)
     return (len(hits) == 0), {"cruft_lines": [ln for _, ln in hits][:25], "count": len(hits)}
 
@@ -672,19 +675,23 @@ def content_files(skill_dir: Path):
 
 
 def read(path) -> str:
+    """Read and return the UTF-8 text of path."""
     return Path(path).read_text(encoding="utf-8")
 
 
 def write(path, text: str):
+    """Write text to path as UTF-8, creating parent directories as needed."""
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     Path(path).write_text(text, encoding="utf-8")
 
 
 def append_jsonl(path, record: dict):
+    """Append record as one JSON line to path, creating parent directories as needed."""
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     with open(path, "a", encoding="utf-8") as fh:
         fh.write(json.dumps(record, ensure_ascii=False) + "\n")
 
 
 def skill_title(skill: str) -> str:
+    """Return a human-readable title from a hyphenated skill slug."""
     return skill.replace("-", " ").title()

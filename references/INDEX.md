@@ -13,6 +13,7 @@ Start here after reading `SKILL.md`. Each reference is a focused decision aid. L
 | [memory-hooks-and-environment.md](memory-hooks-and-environment.md)   | Memory-file assessment, hooks, guardrails, setup, durable data, and tool enablement.                                                                                    | A skill needs repo policy, tools, credentials, hooks, or long-lived preferences.                               |
 | [category-patterns.md](category-patterns.md)                         | Anthropic's three skill use-case categories (Document & Asset Creation, Workflow Automation, MCP Enhancement), their typical contents, and observation methods.         | Selecting the primary skill type or avoiding a confused multi-job skill.                                       |
 | [gotchas-and-measurement.md](gotchas-and-measurement.md)             | Recurring failure modes, iteration loops, usage measurement, and trigger tuning.                                                                                        | Reviewing a skill, adding gotchas, or improving an existing package.                                           |
+| [readme-standard.md](readme-standard.md) | The single-sourced skill `README.md` standard: managed boilerplate regions (located by markdown heading, no markers) vs authored prose, and the `skill_builder.py readme` scaffold/apply workflow. | Writing a new skill's public README, or changing the README standard for every skill at once. |
 
 ## Recommended Reading Paths
 

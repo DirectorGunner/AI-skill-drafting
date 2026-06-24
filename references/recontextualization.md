@@ -9,13 +9,14 @@ rewording is forced through a locked, self-verifying writer so a subagent cannot
 
 ## The three tools
 
-- **`scripts/recontext_core.py`** — the stdlib-only engine. Prose-unit detection, the three gates,
-  chrome/scrape cleanup, extract/splice, and triage. Path-agnostic: nothing is hardcoded to a skill,
-  owner, or location. Backs both tools below, so the published skill ships a self-contained engine.
+- **`scripts/builder_components/recontext_core.py`** — the stdlib-only engine. Prose-unit detection,
+  the three gates, chrome/scrape cleanup, extract/splice, and triage. Path-agnostic: nothing is
+  hardcoded to a skill, owner, or location. Backs both tools below (via the launcher scripts), so the
+  published skill ships a self-contained engine.
 - **`scripts/skill_builder.py recontext <op>`** — the command group for an operator/orchestrator:
   - primitives: `clean`, `extract`, `splice`, `gate`, `triage`
   - lifecycle: `scan` → `batch` → `drain` → `integrate` → `finish` → `reconcile` → `promote`
-- **`scripts/recontext_subagent.py`** — the **locked, gated writer** a rewriting subagent must use
+- **`scripts/skill_builder.py recontext-subagent`** — the **locked, gated writer** a rewriting subagent must use
   (`prepare` / `show` / `submit`). It is the rail: it derives every output path internally, refuses
   any caller-supplied path, confines all writes to one `--work-root`, and runs the gates before it
   writes anything — so a `PASS` is verified, never assumed.
