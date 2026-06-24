@@ -1,86 +1,49 @@
-# Category Patterns
+# Skill Use-Case Categories
 
 ## Purpose
 
-Use this reference to classify a skill before designing it. Classification prevents one skill from becoming several unrelated jobs.
+Classify a skill before designing it: name the one primary category it serves, so the package shape and
+verification match the job and the skill does not sprawl into several unrelated jobs.
 
-## 1. Library And API Reference
+These three categories are Anthropic's, from the official [Complete Guide to Building Skills for Claude](https://resources.anthropic.com/hubfs/The-Complete-Guide-to-Building-Skill-for-Claude.pdf)
+(section "Common skill use case categories" — "At Anthropic, we've observed three common use cases").
 
-Use when the agent needs exact guidance for a library, CLI, SDK, internal platform, or fragile API.
+## 1. Document & Asset Creation
 
-Typical resources: API examples, command patterns, gotchas, version notes, validation snippets.
+Use when the skill's job is producing consistent, high-quality artifacts — documents, slides,
+spreadsheets, designs, web frontends, or code. The work leans on Claude's built-in generation rather
+than external tools.
 
-Observation: import checks, sample commands, unit tests, or minimal runnable examples.
+Typical contents: embedded style guides and brand standards, reusable templates that fix the output
+shape, and a quality checklist the skill runs before declaring an artifact finished.
 
-## 2. Product Verification
+Observation: render or build the artifact and check it against the embedded checklist and templates.
 
-Use when the agent needs to prove product behavior works.
+## 2. Workflow Automation
 
-Typical resources: Playwright flows, screenshots, logs, selectors, expected states, troubleshooting.
+Use when the skill encodes a multi-step process that should run the same disciplined way every time —
+including processes that coordinate several MCP servers. The value is a repeatable methodology, not a
+one-off answer.
 
-Observation: screenshots, traces, console logs, test output, or rendered UI inspection.
+Typical contents: an ordered, step-by-step workflow with validation gates between steps, templates for
+the structures each step emits, and built-in review or refinement loops.
 
-## 3. Data Fetching And Analysis
+Observation: run the workflow end to end and confirm each gate caught what it should before the next
+step proceeded.
 
-Use when workflows depend on dashboards, monitoring, analytics, credentials, standard queries, or interpretation.
+## 3. MCP Enhancement
 
-Typical resources: query templates, metric definitions, data caveats, access checks.
+Use when the skill exists to get more out of the tools an MCP server already exposes — turning raw tool
+access into a guided, expert workflow.
 
-Observation: sample query output, row counts, dashboard snapshots, or reconciled totals.
+Typical contents: the right sequence of MCP calls, the domain context a user would otherwise have to
+supply by hand, and explicit handling for the server's common error cases.
 
-## 4. Business Process And Team Automation
+Observation: exercise the MCP calls against a real or recorded server and confirm the call sequence and
+error handling behave as documented.
 
-Use when a recurring team workflow can be made reliable through steps, templates, and prior outputs.
+## Choosing the shape
 
-Typical resources: process checklist, templates, decision logs, escalation rules.
-
-Observation: completed checklist, generated artifact, approval record, or process log.
-
-## 5. Code Scaffolding And Templates
-
-Use when boilerplate must follow local conventions while still accepting natural-language requirements.
-
-Typical resources: templates, generator scripts, examples, naming conventions, verifier.
-
-Observation: generated files, compile/test output, snapshot comparison, or smoke run.
-
-## 6. Code Quality And Review
-
-Use when review standards, style rules, deterministic checks, or adversarial review procedures should apply consistently.
-
-Typical resources: review checklist, severity model, bad examples, linters, test commands.
-
-Observation: review findings against seeded bad input, test output, or before/after diff.
-
-## 7. CI/CD And Deployment
-
-Use when release, deployment, cherry-pick, PR monitoring, or environment-specific operations need a safe path.
-
-Typical resources: runbook, command order, rollback rules, required approvals, status checks.
-
-Observation: dry-run output, CI status, deployment status, logs, or rollback evidence.
-
-## 8. Runbooks
-
-Use when symptoms should trigger multi-tool investigation and a structured report.
-
-Typical resources: triage order, evidence checklist, known signatures, escalation points.
-
-Observation: collected evidence, command traces, timeline, or incident report.
-
-## 9. Infrastructure Operations
-
-Use for routine maintenance, cost investigation, dependency management, resource cleanup, or operational audits.
-
-Typical resources: inventory commands, safety gates, dry-run checks, cost metrics, cleanup rules.
-
-Observation: dry-run plan, resource diff, metrics snapshot, or post-action verification.
-
-## Choosing The Shape
-
-If a skill spans categories, keep one primary category and route secondary concerns through references. Split the skill when:
-
-- It has two different trigger surfaces.
-- It serves two different users.
-- It needs different tools and verification methods.
-- Its references cannot be routed without loading unrelated material.
+Name one primary category and route secondary concerns through references. Split a skill into separate
+skills when it has two different trigger surfaces, serves two different users, or needs different tools
+and verification for its parts.

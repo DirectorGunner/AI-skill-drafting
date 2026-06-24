@@ -1,4 +1,10 @@
 # Keep this skill repo clean — build/cache and OS/editor clutter.
+
+# Local AI scratch (lint reports, usage-bridge state, credential caches) must NEVER live inside a
+# skill — it belongs at the project root (see scripts/skill_builder.py _find_repo_root). Defense in
+# depth: ignore it here so a misbehaving tool can never commit it into the published skill.
+AI/
+
 __pycache__/
 *.py[cod]
 

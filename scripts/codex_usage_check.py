@@ -63,15 +63,32 @@ def _stamp() -> str:
 
 
 def _find_repo_root(start: Path) -> Path:
-    current = start.resolve()
+    """The VS Code project root that owns `start`: the immediate child of $DEVROOT containing it
+    (%DEVROOT%\\<project>), else the nearest enclosing repo/workspace that is NOT a per-skill package.
+    Every skills/<name>/ is its own git repo (its root has SKILL.md), so resolving to the nearest .git
+    would wrongly land inside a skill; this resolver climbs past skills to the owning project."""
+    current = Path(start).resolve()
+    devroot = os.environ.get("DEVROOT")
+    if devroot:
+        dr = Path(devroot).resolve()
+        for path in (current, *current.parents):
+            if path.parent == dr:
+                if not (path / "SKILL.md").is_file():
+                    return path
+                break  # a skill sits directly under DEVROOT; fall through to the climb
     for path in (current, *current.parents):
+        if (path / "SKILL.md").is_file():
+            continue  # never resolve to a per-skill package
         if (path / ".git").exists() or (path / "AGENTS.md").is_file():
             return path
     return current
 
 
 def _repo_work_dir() -> Path:
-    return _find_repo_root(Path.cwd()) / "AI" / "work"
+    root = _find_repo_root(Path.cwd())
+    if (root / "SKILL.md").is_file():  # guard: never write AI/work inside a skill package
+        raise RuntimeError(f"refusing to use AI/work inside a skill package: {root}")
+    return root / "AI" / "work"
 
 
 def _repo_local_codex_home() -> Path:

@@ -35,7 +35,7 @@ The authoritative framework spec — the gold-standard package shape, the end-to
    - Gate 3: package anatomy, reference split, scripts/assets, setup/config, memory-file impact.
    - Gate 4: quality harness, observation artifact, verifier, forward-test plan.
    - Gate 5: final implementation plan, files, acceptance criteria, and rollback or preservation rules.
-3. Classify the skill using the 9 skill categories before drafting; if it spans categories, name the primary category and explain why.
+3. Classify the skill using Anthropic's three skill use-case categories (Document & Asset Creation, Workflow Automation, MCP Enhancement) before drafting; if it spans categories, name the primary category and explain why.
 4. Draft for progressive disclosure: frontmatter is the trigger surface, `SKILL.md` is the runtime guide, references are opened on demand, scripts/assets exist only when they change behavior or reliability.
 5. Require a `Gotchas` section for recurring failure modes and a `Verification` section with observable checks.
 6. Build or specify a task-specific quality harness that can distinguish good output from bad output.
@@ -46,16 +46,17 @@ The authoritative framework spec — the gold-standard package shape, the end-to
 
 ## Task Router
 
-| If the task is about...                                                                          | Read                                          |
-| ------------------------------------------------------------------------------------------------ | --------------------------------------------- |
-| required files, folder anatomy, frontmatter, trigger descriptions, references, scripts, assets   | `references/skill-package-anatomy.md`         |
-| interviewing the user, staging decisions, writing a spec, checkpointing before writes            | `references/interview-spec-gates.md`          |
-| turning source material into original skill guidance while preserving names, commands, and facts | `references/source-digestion-and-fidelity.md` |
-| output quality, tests, rubrics, observation artifacts, good-vs-bad evaluation                    | `references/quality-harnesses.md`             |
-| using subagents for independent critique, forward-testing, or source digestion                   | `references/subagents-and-forward-testing.md` |
-| AGENTS.md, CLAUDE.md, hooks, guardrails, setup, durable memory, environment support              | `references/memory-hooks-and-environment.md`  |
-| choosing among the 9 skill categories and matching package shape to category                     | `references/category-patterns.md`             |
-| recurring failure modes, measurement, iteration, under-triggering, over-triggering               | `references/gotchas-and-measurement.md`       |
+| If the task is about...                                                                                    | Read                                          |
+| ---------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| required files, folder anatomy, frontmatter, trigger descriptions, references, scripts, assets             | `references/skill-package-anatomy.md`         |
+| interviewing the user, staging decisions, writing a spec, checkpointing before writes                      | `references/interview-spec-gates.md`          |
+| turning source material into original skill guidance while preserving names, commands, and facts           | `references/source-digestion-and-fidelity.md` |
+| recontextualizing verbatim ingested docs into original publishable prose (gates, locked writer, lifecycle) | `references/recontextualization.md`           |
+| output quality, tests, rubrics, observation artifacts, good-vs-bad evaluation                              | `references/quality-harnesses.md`             |
+| using subagents for independent critique, forward-testing, or source digestion                             | `references/subagents-and-forward-testing.md` |
+| AGENTS.md, CLAUDE.md, hooks, guardrails, setup, durable memory, environment support                        | `references/memory-hooks-and-environment.md`  |
+| choosing among Anthropic's three skill use-case categories and matching package shape to category          | `references/category-patterns.md`             |
+| recurring failure modes, measurement, iteration, under-triggering, over-triggering                         | `references/gotchas-and-measurement.md`       |
 
 ## Building A Reference Skill From A Corpus
 
@@ -71,6 +72,20 @@ See [`better-skill-framework.md`](../../../better-skill-framework.md) for the fu
 ## Breaking Up An Oversized Reference Doc
 
 When a skill already has good prose but a few `references/*.md` files are too big to load efficiently, split them deterministically with `scripts/skill_builder.py split` — no LLM, no rewriting. Each input doc is parsed at a heading level (default `###`, optionally limited to one `## ` section), CONSECUTIVE same-title blocks are merged into one topic, and each topic becomes its own file (or, with `--max-bytes`, whole topics are packed up to a size). Filenames are `slug(title)`, prefixed with a source subject token only on cross-file collision. It regenerates `references/INDEX.md` (replacing just the topic-listing section, preserving the rest) and `references/topics.json`, optionally remaps a `symbols.json`'s `reference_files` (`--remap-symbols`, with `--symbols-source-map` to map each group to its source doc's topic files — far more reliable than term matching when group keys are normalized labels), and removes the originals (`--replace-inputs`). The split is VERBATIM by default (use `--clean` only for noisy source); `--verify` proves byte-for-byte coverage and INDEX/topics consistency. Drive per-file params with CLI flags or a `--legend` JSON; see `python scripts/skill_builder.py split --help`.
+
+## Recontextualizing A Verbatim Corpus Before Publishing
+
+When a skill's `references/*.md` were ingested **verbatim** from upstream docs, reword them into
+**original prose** (identifiers/code/links/numbers/tables preserved exactly) before publishing — the
+licensing gate. The engine is `scripts/recontext_core.py`; drive it with `scripts/skill_builder.py recontext`:
+primitives `clean | extract | splice | gate | triage`, and the lifecycle `scan -> batch -> drain ->
+integrate -> finish -> reconcile -> promote` (roots/owner from a `--config` JSON or CLI flags; nothing
+hardcoded). Rewriting subagents must go through the **locked, gated writer** `scripts/recontext_subagent.py`
+(`prepare`/`show`/`submit`): it derives all paths internally, confines writes to one `--work-root`, and
+runs Gate A (identifiers), Gate B (~13-word residue), and Gate C (cruft) before writing — so a `PASS`
+is verified. `recontext drain` generates a Workflow that drives this writer (replacing freehand
+`_rw_`/`_pkt_` writing). Full details, the gate definitions, and the locked-writer contract are in
+[`references/recontextualization.md`](references/recontextualization.md).
 
 ## Maintaining An Already-Shipped Skill In Place
 
